@@ -1,6 +1,8 @@
+##Dll Loader for Fallout 4##
+
 **What is this?**
 
-It's a dll that loads other dlls into Fallout 4 via X3DAudio1_7.dll.
+It's a dll that loads other dlls into Fallout 4 via the X3DAudio1_7 dll.
 
 **Compile Notes**
 
