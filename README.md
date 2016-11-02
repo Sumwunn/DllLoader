@@ -3,8 +3,8 @@
 **What is this?**
 
 It's a dll that loads other dlls by using a system dll as a proxy.
-X3DAudio1_7 is for Fallout 4.
-DINPUT8 is for Skyrim SE.
+- X3DAudio1_7 is for Fallout 4.
+- DINPUT8 is for Skyrim SE.
 
 It reads dlls to be loaded from DllLoader.txt (create manually).
 
