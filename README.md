@@ -23,7 +23,7 @@ Reads DllLoader.txt -> Loads Dlls -> Looks and reads from export txts -> Calls d
 **NOTES**
 
 - Written in C++/ASM (Visual Studio 2015 & HJWasm).
-- To compile X3DAudio1_7 with True3DSound support you must define the preprocessor _TRUE3DSOUND_ in C++/Preprocessor & In HJWASM/General.
+- To compile X3DAudio1_7 with True3DSound support you must define the preprocessor "_TRUE3DSOUND_" in C++/Preprocessor & In HJWASM/General.
 
 **CREDITS**
 
