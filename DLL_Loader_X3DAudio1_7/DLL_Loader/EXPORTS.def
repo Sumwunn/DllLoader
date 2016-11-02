@@ -1,0 +1,3 @@
+EXPORTS
+X3DAudioCalculate = DllProxyFunction01 @01
+X3DAudioInitialize = DllProxyFunction02 @02
