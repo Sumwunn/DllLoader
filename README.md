@@ -1,3 +1,7 @@
+-
+This cannot be installed with NMM, it will cause issues. You must install manually to avoid all issues.
+-
+
 #-------- X3DAudio1_7 README --------
 
 **How does it work?**
@@ -33,10 +37,6 @@ Delete X3DAudio1_7.dll from Fallout 4's root folder.
 - To compile X3DAudio1_7 with True3DSound support you must define the preprocessor `_TRUE3DSOUND_` in C++/Preprocessor & In HJWASM/General.
 
 #-------- DINPUT8 README --------
-
--
-This cannot be installed with NMM, it will cause issues. You must install manually to avoid all issues.
--
 
 **What is this and how does it work?**
 
