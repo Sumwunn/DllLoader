@@ -5,7 +5,7 @@ This cannot be installed with NMM, it will cause issues. You must install manual
 #-------- X3DAudio1_7 README --------
 
 **How does it work?**
-It reads dlls to be loaded from DllLoader.txt.
+It reads dll names to be loaded from DllLoader.txt.
 
 It can also call dll export names read from a txt file named after a dll affixed with "_Exports.txt" (eg SomeDll.dll_Exports.txt).
 
