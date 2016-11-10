@@ -14,8 +14,7 @@ Each dll name & dll export name must be on it's own line.
 **How to install**
 
 1. Copy X3DAudio1_7.dll from the download to Fallout 4's root folder (where Fallout4.exe is).
-2. After you've installed it, all of my mods can be installed via NMM.
-3. Read the notes.
+2. Read the notes.
 
 **Install notes**
 
@@ -90,7 +89,7 @@ Source Code
 - This is NOT NMM compatible. It must be installed manually.
 - This does not use SKSE. It will also not conflict with it.
 - Written in C++/ASM (Visual Studio 2015 & HJWasm).
-- The Dll loader can be used to load any dll into Skyrim SE.
+- The Dll loaders can be used to load any dll into Fallout 4/Skyrim SE.
 
 **CREDITS**
 
