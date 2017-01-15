@@ -53,63 +53,67 @@ int SetupDllProxy() {
 
 	HMODULE DllProxy_hModule = NULL;
 
-	LPCTSTR DllProxyName = L"X3DAudio1_7.dll";
-	LPCTSTR DllSystemPath = L"\\System32\\";
+	LPCTSTR DllProxyPath = L"\\System32\\X3DAudio1_7.dll";
 	LPCSTR DllProxyFunction01Name = "X3DAudioCalculate";
 	LPCSTR DllProxyFunction02Name = "X3DAudioInitialize";
 
 	GetWindowsDirectory(DllProxyWinDirPath, MAX_PATH);
-	_tcscat_s(DllProxyWinDirPath, DllSystemPath);
-	_tcscat_s(DllProxyWinDirPath, DllProxyName);
+	_tcscat_s(DllProxyWinDirPath, DllProxyPath);
 	DllProxy_hModule = LoadLibrary(DllProxyWinDirPath);
 	DllProxyFunction01Addr = GetProcAddress(DllProxy_hModule, DllProxyFunction01Name);
 	DllProxyFunction02Addr = GetProcAddress(DllProxy_hModule, DllProxyFunction02Name);
 #endif
 
+	HasProxyDllBeenSetup = TRUE;
+
 	// This works great because X3DAudio's function gets called just before Fallout 4's intro starts.
 	// So no waiting for Steam decryption, yay!
 	LoadDlls();
-
-	HasProxyDllBeenSetup = TRUE;
 
 	return 0;
 }
 
 int LoadDlls() {
 
-	LPCTSTR ExpectedProcess01 = L"Fallout4.exe";
-	LPCTSTR ExpectedProcess02 = L"SkyrimSE.exe";
+	LPCTSTR ExpectedProcess = L"Fallout4.exe";
 
 	HMODULE hModule = NULL;
 
+	std::wofstream LogFile;
+
 	// Check for expected exe.
-	if (GetModuleHandleEx(NULL, ExpectedProcess01, &hModule) || GetModuleHandleEx(NULL, ExpectedProcess02, &hModule) != NULL) {
-		// Open up file with dlls.
-		std::ifstream DllLoaderTxtFile;
-		DllLoaderTxtFile.open("DllLoader.txt");
-		// Does the dll list exist?
-		if (!DllLoaderTxtFile) {
-			// Nope!
+	if (GetModuleHandleEx(NULL, ExpectedProcess, &hModule) != NULL) {
+		// Logging.
+		LogFile.open(L"Data\\Plugins\\Sumwunn\\DllLoader.log");
+		// Log file creation failed.
+		if (!LogFile) {
 			return 0;
 		}
-		// Read txt file with dll names and load them.
-		std::string DllToLoad;
-		while (std::getline(DllLoaderTxtFile, DllToLoad))
-		{
-			TCHAR Buffer[MAX_PATH]; // Used for both name of dll to be loaded & it's exports txt filename.
+		// Data.
+		WIN32_FIND_DATA FindFileData;
+		HANDLE hFind;
+		HMODULE hModule;
+		TCHAR cFileNamePath[MAX_PATH];
+		// Search for dlls in Data\Plugins\Sumwunn
+		for (hFind = FindFirstFile(L"Data\\Plugins\\Sumwunn\\*.dll", &FindFileData); hFind != INVALID_HANDLE_VALUE && GetLastError() != ERROR_NO_MORE_FILES; FindNextFile(hFind, &FindFileData)) {
 			// Load dll.
-			_tcscpy_s(Buffer, MAX_PATH, CA2T(DllToLoad.c_str()));
-			HMODULE Dll_hModule = LoadLibrary(Buffer);
-			// Skip dll if we didn't get hModule from LoadLibrary.
-			if (Dll_hModule == NULL) {
-				continue;
+			_tcscpy_s(cFileNamePath, MAX_PATH, L"Data\\Plugins\\Sumwunn\\"); // Add dll path.
+			_tcscat_s(cFileNamePath, MAX_PATH, FindFileData.cFileName); // Add dll name.
+			hModule = LoadLibrary(cFileNamePath);
+			if (hModule == NULL) {
+				// Log message. Dll did not load.
+				LogFile << FindFileData.cFileName << L" | Loading Failed (hModule NULL)" << std::endl;
+			}
+			else {
+				// Log message. Dll loaded OK.
+				LogFile << FindFileData.cFileName << L" | Loaded OK" << L" | Address: " << hModule << std::endl;
 			}
 			//////////////// SETUP EXTENSION, READ EXPORTS TXT THEN CALL FUNCTIONS ////////////////
 			// Setup extension for dll exports txt.
-			_tcscat_s(Buffer, MAX_PATH, L"_Exports.txt"); // Add txt extension.
-			// Open up file with dll exports.
+			_tcscat_s(cFileNamePath, MAX_PATH, L"_Exports.txt"); // Add txt extension.
+																 // Open up file with dll exports.
 			std::ifstream DllExportsTxtFile;
-			DllExportsTxtFile.open(Buffer);
+			DllExportsTxtFile.open(cFileNamePath);
 			// Skip Exports if txt doesn't exist.
 			if (!DllExportsTxtFile) {
 				continue;
@@ -118,24 +122,38 @@ int LoadDlls() {
 			std::string DllExportToCall;
 			while (std::getline(DllExportsTxtFile, DllExportToCall))
 			{
-				char Buffer[MAX_PATH];
+				char ExportName[MAX_PATH];
 				FARPROC ExportAddress = NULL;
+				INT_PTR ReturnValue = NULL;
 				// Convert std string to char.
-				strcpy_s(Buffer, MAX_PATH, CA2A(DllExportToCall.c_str()));
+				strcpy_s(ExportName, MAX_PATH, CA2A(DllExportToCall.c_str()));
 				// Get dll export address.
-				ExportAddress = GetProcAddress(Dll_hModule, Buffer);
-				// Skip if address does not get returned.
-				if (ExportAddress != NULL) {
-					// Call it.
-					ExportAddress();
+				ExportAddress = GetProcAddress(hModule, ExportName);
+				// Export name not FOUND!
+				if (ExportAddress == NULL) {
+					// Log message. Export called.
+					LogFile << L"- " << ExportName << L" | Export not found" << std::endl;
 				}
+				// Export name found!
+				else {
+					// Call it.
+					ReturnValue = ExportAddress();
+					// Logging.
+					// Log message. Export called.
+					LogFile << L"- " << ExportName << L" | Export Called" << L" | Return Value: " << ReturnValue << L" | Address: " << ExportAddress << std::endl;
+				}
+				// Newline.
+				LogFile << std::endl;
 			}
 			// Cleanup.
 			DllExportsTxtFile.close();
 		}
 		// Cleanup.
-		DllLoaderTxtFile.close();
+		FindClose(hFind);
 	}
+
+	// Cleanup.
+	LogFile.close();
 
 	return 0;
 }
