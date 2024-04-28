@@ -13,6 +13,15 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Source Files\C++">
+      <UniqueIdentifier>{ca64e102-dcf3-4aa0-946b-10533c57afa6}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\ASM">
+      <UniqueIdentifier>{d0dc68f8-437f-4997-a30f-1912f173f52e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Detours">
+      <UniqueIdentifier>{336b272c-cda9-4f97-81b9-caf92dfc70d4}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h">
@@ -26,14 +35,23 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="stdafx.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="DLL_Loader.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\C++</Filter>
     </ClCompile>
     <ClCompile Include="dllmain.cpp">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\C++</Filter>
+    </ClCompile>
+    <ClCompile Include="stdafx.cpp">
+      <Filter>Source Files\C++</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Libraries\Detours-4.0.1\src\detours.cpp">
+      <Filter>Source Files\Detours</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Libraries\Detours-4.0.1\src\disasm.cpp">
+      <Filter>Source Files\Detours</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\..\Libraries\Detours-4.0.1\src\modules.cpp">
+      <Filter>Source Files\Detours</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -42,8 +60,8 @@
     </ResourceCompile>
   </ItemGroup>
   <ItemGroup>
-    <HJWASM Include="ExportFunctions.asm">
-      <Filter>Source Files</Filter>
-    </HJWASM>
+    <UASM Include="ExportFunctions.asm">
+      <Filter>Source Files\ASM</Filter>
+    </UASM>
   </ItemGroup>
 </Project>

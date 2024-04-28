@@ -1,6 +1,0 @@
-EXPORTS
-DirectInput8Create = DllProxyFunction01 @01
-DllCanUnloadNow = DllProxyFunction02 @02
-DllGetClassObject = DllProxyFunction03 @03
-DllRegisterServer = DllProxyFunction04 @04
-DllUnregisterServer = DllProxyFunction05 @05
