@@ -19,9 +19,6 @@
     <Filter Include="Source Files\ASM">
       <UniqueIdentifier>{d0dc68f8-437f-4997-a30f-1912f173f52e}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\Detours">
-      <UniqueIdentifier>{336b272c-cda9-4f97-81b9-caf92dfc70d4}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="stdafx.h">
@@ -43,15 +40,6 @@
     </ClCompile>
     <ClCompile Include="stdafx.cpp">
       <Filter>Source Files\C++</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\Libraries\Detours-4.0.1\src\detours.cpp">
-      <Filter>Source Files\Detours</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\Libraries\Detours-4.0.1\src\disasm.cpp">
-      <Filter>Source Files\Detours</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\..\Libraries\Detours-4.0.1\src\modules.cpp">
-      <Filter>Source Files\Detours</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

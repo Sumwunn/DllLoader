@@ -21,12 +21,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.*/
 
 #include "stdafx.h"
 #include <windows.h>
-#include <string.h>
-#include <string>
 #include <strsafe.h>
+#include <detours.h>
+#include <string>
 #include <fstream>
 #include <iostream>
-#include <detours.h>
 
 // Arrays
 #define DLL_PROXY_NAMES_MAX 193 + 1
@@ -231,8 +230,8 @@ LPCSTR DllProxyFuncNames[DLL_PROXY_NAMES_MAX] =
 
 // C++
 void DetoursStart();
-int SetupDllProxy();
-int cdaDetour(LPCSTR, LPSECURITY_ATTRIBUTES);
+void SetupDllProxy();
+bool cdaDetour(LPCSTR, LPSECURITY_ATTRIBUTES);
 
 // For ExportFunctions.asm
 extern "C" bool _ExportGetRealAddr(void*);
@@ -258,7 +257,6 @@ void Setup(HMODULE hModule)
 
 void DetoursStart()
 {
-	DetourRestoreAfterWith();
 	DetourTransactionBegin();
 	DetourUpdateThread(GetCurrentThread());
 	DetourAttach(&(PVOID&)hookTarget, cdaDetour);
@@ -277,21 +275,21 @@ void DetoursEnd()
 	return;
 }
 
-int SetupDllProxy() 
+void SetupDllProxy() 
 {
 	if (ProxyDllSetup)
-		return 2;
+		return;
 
-	// Dll Proxy Data.
+	// Dll Proxy Data
 	TCHAR DllProxyWinDirPath[MAX_PATH];
 	LPCTSTR DllProxyPath = L"\\System32\\winmm.dll";
 
-	// Setup Dll proxy.
+	// Setup Dll proxy
 	GetWindowsDirectory(DllProxyWinDirPath, MAX_PATH);
 	StringCchCat(DllProxyWinDirPath, MAX_PATH, DllProxyPath);
 	DllProxy_hModule = LoadLibrary(DllProxyWinDirPath);
 
-	// First function is an oridinal (starting at 0x02).
+	// First function is an oridinal (starting at 0x02)
 	DllProxyFuncAddrs[0] = GetProcAddress(DllProxy_hModule, MAKEINTRESOURCEA(0x02));
 
 	for (int i = 1; i < DLL_PROXY_NAMES_MAX - 1; i++)
@@ -299,7 +297,7 @@ int SetupDllProxy()
 
 	ProxyDllSetup = true;
 
-	return 1;
+	return;
 }
 
 bool _ExportGetRealAddr(void* expectedAddr)
@@ -319,114 +317,112 @@ bool _ExportGetRealAddr(void* expectedAddr)
 }
 
 // CreateDirectoryA Hook
-int cdaDetour(LPCSTR pN, LPSECURITY_ATTRIBUTES sA) {
+bool cdaDetour(LPCSTR pN, LPSECURITY_ATTRIBUTES sA) {
 
+	// Config
 	TCHAR ConfigFilePath[MAX_PATH];
-	int iEnableLogging = 1;
-	// 0 = Disable.
-	// 1 = Enable.
+	bool bEnableLogging;
 
-	// Get config path.
-	GetCurrentDirectory(MAX_PATH, ConfigFilePath);
-	_tcscat_s(ConfigFilePath, MAX_PATH, L"\\Data\\Plugins\\Sumwunn\\DllLoader.ini");
-	// Get config settings.
-	iEnableLogging = GetPrivateProfileInt(L"General", L"iEnableLogging", 1, ConfigFilePath);
-
-	// Checking for incorrect values.
-	if (iEnableLogging < 0 || iEnableLogging > 1)
-		iEnableLogging = 1;
-
-	// Logging.
+	// File IO
 	std::wofstream LogFile;
-	if (iEnableLogging == 1)
-	{
-		// Logging.
-		LogFile.open(L"Data\\Plugins\\Sumwunn\\DllLoader.log");
-		// Log file creation failed.
-		if (!LogFile) {
-			return 0;
-		}
-	}
-	// Data.
+
+	// Dll Info
 	WIN32_FIND_DATA FindFileData;
 	HANDLE hFind = NULL;
 	HMODULE hModule = NULL;
 	TCHAR cFileNamePath[MAX_PATH];
+
+	// Get config path
+	GetCurrentDirectory(MAX_PATH, ConfigFilePath);
+	_tcscat_s(ConfigFilePath, MAX_PATH, L"\\Data\\Plugins\\Sumwunn\\DllLoader.ini");
+	// Get config settings
+	bEnableLogging = GetPrivateProfileInt(L"General", L"bEnableLogging", true, ConfigFilePath);
+
+	// Logging
+	if (bEnableLogging)
+	{
+		LogFile.open(L"Data\\Plugins\\Sumwunn\\DllLoader.log");
+		// Log file creation failed.
+		if (!LogFile)
+			bEnableLogging = false;
+	}
+
 	// Search for dlls in Data\Plugins\Sumwunn
-	for (hFind = FindFirstFile(L"Data\\Plugins\\Sumwunn\\*.dll", &FindFileData); hFind != INVALID_HANDLE_VALUE && GetLastError() != ERROR_NO_MORE_FILES; FindNextFile(hFind, &FindFileData)) {
-		// Load dll.
-		_tcscpy_s(cFileNamePath, MAX_PATH, L"Data\\Plugins\\Sumwunn\\"); // Add dll path.
-		_tcscat_s(cFileNamePath, MAX_PATH, FindFileData.cFileName); // Add dll name.
+	for (hFind = FindFirstFile(L"Data\\Plugins\\Sumwunn\\*.dll", &FindFileData); hFind != INVALID_HANDLE_VALUE && GetLastError() != ERROR_NO_MORE_FILES; FindNextFile(hFind, &FindFileData)) 
+	{	
+		// Load dll
+		_tcscpy_s(cFileNamePath, MAX_PATH, L"Data\\Plugins\\Sumwunn\\"); // Add dll path
+		_tcscat_s(cFileNamePath, MAX_PATH, FindFileData.cFileName); // Add dll name
 		hModule = LoadLibrary(cFileNamePath);
-		// Logging.
-		if (iEnableLogging == 1)
+
+		// Logging
+		if (bEnableLogging)
 		{
-			if (hModule == NULL) {
-				// Log message. Dll did not load.
+			if (hModule == NULL)
+				// Log message. Dll did not load
 				LogFile << FindFileData.cFileName << L" | Loading Failed (hModule NULL)" << std::endl;
-			}
-			else {
-				// Log message. Dll loaded OK.
+			else
+				// Log message. Dll loaded OK
 				LogFile << FindFileData.cFileName << L" | Loaded OK" << L" | Address: " << hModule << std::endl;
-			}
 		}
+
 		//////////////// SETUP EXTENSION, READ EXPORTS TXT THEN CALL FUNCTIONS ////////////////
-		// Setup extension for dll exports txt.
-		_tcscat_s(cFileNamePath, MAX_PATH, L"_Exports.txt"); // Add txt extension.
-		// Open up file with dll exports.
+
+		// Setup extension for dll exports txt
+		_tcscat_s(cFileNamePath, MAX_PATH, L"_Exports.txt"); // Add txt extension
+		// Open up file with dll exports
 		std::ifstream DllExportsTxtFile;
 		DllExportsTxtFile.open(cFileNamePath);
-		// Skip Exports if txt doesn't exist.
-		if (!DllExportsTxtFile) {
+
+		// Skip Exports if txt doesn't exist
+		if (!DllExportsTxtFile)
 			continue;
-		}
-		// The Read 'N Call.
+
+		// The Read 'N Call
 		std::string DllExportToCall;
 		while (std::getline(DllExportsTxtFile, DllExportToCall))
 		{
 			char ExportName[MAX_PATH];
 			FARPROC ExportAddress = NULL;
 			INT_PTR ReturnValue = NULL;
-			// Convert std string to char.
+			// Convert std string to char
 			strcpy_s(ExportName, MAX_PATH, DllExportToCall.c_str());
-			// Get dll export address.
+			// Get dll export address
 			ExportAddress = GetProcAddress(hModule, ExportName);
-			// Export name not FOUND!
-			if (ExportAddress == NULL) {
-				// Logging.
-				if (iEnableLogging == 1)
-				{
-					// Log message. Export called.
+
+			// Export name not found
+			if (ExportAddress == NULL) 
+			{
+				// Logging
+				if (bEnableLogging)
+					// Log message; export called
 					LogFile << L"- " << ExportName << L" | Export not found" << std::endl;
-				}
 			}
-			// Export name found!
-			else {
-				// Call it.
+			// Export name found
+			else 
+			{
+				// Call it
 				ReturnValue = ExportAddress();
-				// Logging.
-				if (iEnableLogging == 1)
-				{
-					// Log message. Export called.
+				// Logging
+				if (bEnableLogging)
+					// Log message; export called
 					LogFile << L"- " << ExportName << L" | Export Called" << L" | Return Value: " << ReturnValue << L" | Address: " << ExportAddress << std::endl;
-				}
 			}
 		}
-		// Cleanup.
+
+		// Cleanup
 		DllExportsTxtFile.close();
 	}
-	// Cleanup.
+
+	// Cleanup
 	FindClose(hFind);
 
-	// Logging.
-	if (iEnableLogging == 1)
-	{
-		// Cleanup.
+	if (bEnableLogging)
 		LogFile.close();
-	}
 
 	// Done, release Detour
 	DetoursEnd();
+
 	// Call Original Function
 	return CreateDirectoryA(pN, sA);
 }
