@@ -51,5 +51,8 @@
     <UASM Include="ExportFunctions.asm">
       <Filter>Source Files\ASM</Filter>
     </UASM>
+    <UASM Include="Utils.asm">
+      <Filter>Source Files</Filter>
+    </UASM>
   </ItemGroup>
 </Project>

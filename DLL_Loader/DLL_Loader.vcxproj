@@ -84,6 +84,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <TargetName>winmm</TargetName>
+    <GenerateManifest>false</GenerateManifest>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -163,7 +164,6 @@
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <StringPooling>true</StringPooling>
       <BufferSecurityCheck>false</BufferSecurityCheck>
-      <AdditionalIncludeDirectories>C:\Users\SuperTestUser\Projects\Libraries\Detours-4.0.1\src;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <IntrinsicFunctions>true</IntrinsicFunctions>
@@ -174,7 +174,6 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>false</GenerateDebugInformation>
       <ModuleDefinitionFile>EXPORTS.def</ModuleDefinitionFile>
-      <AdditionalDependencies>C:\Users\SuperTestUser\Projects\Libraries\Detours-4.0.1\lib.X64\detours.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <JWASM>
       <AdditionalOptions>/D_WIN64 %(AdditionalOptions)</AdditionalOptions>
@@ -222,6 +221,7 @@
     <UASM Include="ExportFunctions.asm">
       <FileType>Document</FileType>
     </UASM>
+    <UASM Include="Utils.asm" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="DLL_Loader.rc" />

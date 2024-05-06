@@ -21,8 +21,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.*/
 
 #include "stdafx.h"
 #include <windows.h>
+#include <shlobj.h>
+#include <shlobj_core.h>
 #include <strsafe.h>
-#include <detours.h>
 #include <string>
 #include <fstream>
 #include <iostream>
@@ -228,24 +229,30 @@ LPCSTR DllProxyFuncNames[DLL_PROXY_NAMES_MAX] =
 
 // ------------------------------------------------------------
 
+// ASM
+extern "C" void* HookWrite(void*, void*);
+
 // C++
 void DetoursStart();
+HRESULT apiDetour(HWND, int, HANDLE, DWORD, LPSTR);
+
 void SetupDllProxy();
-bool cdaDetour(LPCSTR, LPSECURITY_ATTRIBUTES);
 
 // For ExportFunctions.asm
 extern "C" bool _ExportGetRealAddr(void*);
 extern "C" void* ExportRealAddr;
 
 // Misc
-HMODULE Dll_hModule;
+HMODULE Dll_hModule = NULL;
 HMODULE DllProxy_hModule = NULL;
 bool ProxyDllSetup = false;
+void* ExportRealAddr = NULL;
 
-void* ExportRealAddr;
+// Hook Data
+unsigned char OrigBytes[20] = { 0 };
 
 // For Detours
-static BOOL(WINAPI* hookTarget)(LPCSTR lpPathName, LPSECURITY_ATTRIBUTES lpSecurityAttributes) = CreateDirectoryA;
+static HRESULT(WINAPI* hookTarget)(HWND hwnd, int csidl, HANDLE hToken, DWORD dwFlags, LPSTR pszPath) = SHGetFolderPathA;
 
 // ------------------------------------------------------------
 
@@ -257,32 +264,32 @@ void Setup(HMODULE hModule)
 
 void DetoursStart()
 {
-	DetourTransactionBegin();
-	DetourUpdateThread(GetCurrentThread());
-	DetourAttach(&(PVOID&)hookTarget, cdaDetour);
-	DetourTransactionCommit();
+	// Backup patched bytes
+	memcpy(OrigBytes, hookTarget, sizeof OrigBytes);
+	HookWrite(hookTarget, apiDetour);
 
 	return;
 }
 
 void DetoursEnd()
 {
-	DetourTransactionBegin();
-	DetourUpdateThread(GetCurrentThread());
-	DetourDetach(&(PVOID&)hookTarget, cdaDetour);
-	DetourTransactionCommit();
+	DWORD lpflOldProtect = NULL;
+
+	VirtualProtect(hookTarget, sizeof OrigBytes, PAGE_EXECUTE_READWRITE, &lpflOldProtect);
+	memcpy(hookTarget, OrigBytes, sizeof OrigBytes);
+	VirtualProtect(hookTarget, sizeof OrigBytes, lpflOldProtect, &lpflOldProtect);
 
 	return;
 }
 
 void SetupDllProxy() 
 {
-	if (ProxyDllSetup)
-		return;
-
 	// Dll Proxy Data
 	TCHAR DllProxyWinDirPath[MAX_PATH];
 	LPCTSTR DllProxyPath = L"\\System32\\winmm.dll";
+
+	if (ProxyDllSetup)
+		return;
 
 	// Setup Dll proxy
 	GetWindowsDirectory(DllProxyWinDirPath, MAX_PATH);
@@ -309,6 +316,7 @@ bool _ExportGetRealAddr(void* expectedAddr)
 		if (GetProcAddress(Dll_hModule, DllProxyFuncNames[i]) == expectedAddr)
 		{
 			ExportRealAddr = DllProxyFuncAddrs[i];
+
 			return true;
 		}
 	}
@@ -316,12 +324,12 @@ bool _ExportGetRealAddr(void* expectedAddr)
 	return false;
 }
 
-// CreateDirectoryA Hook
-bool cdaDetour(LPCSTR pN, LPSECURITY_ATTRIBUTES sA) {
+// API Detour
+HRESULT apiDetour(HWND hwnd, int csidl, HANDLE hToken, DWORD dwFlags, LPSTR pszPath) {
 
 	// Config
 	TCHAR ConfigFilePath[MAX_PATH];
-	bool bEnableLogging;
+	bool bEnableLogging = true;
 
 	// File IO
 	std::wofstream LogFile;
@@ -342,6 +350,7 @@ bool cdaDetour(LPCSTR pN, LPSECURITY_ATTRIBUTES sA) {
 	if (bEnableLogging)
 	{
 		LogFile.open(L"Data\\Plugins\\Sumwunn\\DllLoader.log");
+
 		// Log file creation failed.
 		if (!LogFile)
 			bEnableLogging = false;
@@ -416,7 +425,6 @@ bool cdaDetour(LPCSTR pN, LPSECURITY_ATTRIBUTES sA) {
 
 	// Cleanup
 	FindClose(hFind);
-
 	if (bEnableLogging)
 		LogFile.close();
 
@@ -424,5 +432,5 @@ bool cdaDetour(LPCSTR pN, LPSECURITY_ATTRIBUTES sA) {
 	DetoursEnd();
 
 	// Call Original Function
-	return CreateDirectoryA(pN, sA);
+	return SHGetFolderPathA(hwnd, csidl, hToken, dwFlags, pszPath);
 }
