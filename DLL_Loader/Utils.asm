@@ -53,6 +53,56 @@ OldVP DWORD ?
 
 ; ¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤
 
+GetIATAddr proc frame
+
+jmp GetIATData
+
+GetIATAddr endp
+
+; ¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤
+
+GetIATSize proc frame
+
+jmp GetIATData
+
+GetIATSize endp
+
+; ¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤
+
+GetIATData proc frame Module:QWORD, DataType:DWORD
+
+; 1 = Section Relative Virtual Address
+; 2 = Section Relative Virtual Size
+
+; Get imagebase
+mov rcx, [Module]
+xor rax, rax
+
+; Get PE header
+mov eax, [rcx+3Ch]
+add rcx, rax
+
+; RVA -> VA
+.if [DataType] == 1
+mov eax, [rcx+0E8h]
+add rax, [Module]
+jmp Exit
+
+; RVS
+.elseif [DataType] == 2
+mov eax, [rcx+0ECh]
+jmp Exit
+.endif
+
+xor rax, rax
+
+Exit:
+ret
+
+GetIATData endp
+
+; ¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤¤
+
 HookWrite proc frame HookAddress:QWORD, HookDestination:QWORD
 
 invoke VirtualProtect, HookAddress, 20, 40h, addr OldVP

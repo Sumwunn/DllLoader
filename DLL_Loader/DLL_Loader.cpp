@@ -232,9 +232,14 @@ LPCSTR DllProxyFuncNames[DLL_PROXY_NAMES_MAX] =
 // ASM
 extern "C" void* HookWrite(void*, void*);
 
+// Because GetTextSectionData has multiple return types
+extern "C" FARPROC* GetIATAddr(HMODULE, int);
+extern "C" unsigned int GetIATSize(HMODULE, int);
+
 // C++
 void DetoursStart();
-HRESULT apiDetour(HWND, int, HANDLE, DWORD, LPSTR);
+bool apiPatch(HMODULE, FARPROC*);
+BOOL apiDetour(LPCSTR, LPSECURITY_ATTRIBUTES);
 
 void SetupDllProxy();
 
@@ -248,11 +253,10 @@ HMODULE DllProxy_hModule = NULL;
 bool ProxyDllSetup = false;
 void* ExportRealAddr = NULL;
 
-// Hook Data
-unsigned char OrigBytes[20] = { 0 };
-
 // For Detours
-static HRESULT(WINAPI* hookTarget)(HWND hwnd, int csidl, HANDLE hToken, DWORD dwFlags, LPSTR pszPath) = SHGetFolderPathA;
+static BOOL(WINAPI* apiTarget)(LPCSTR lpPathName, LPSECURITY_ATTRIBUTES lpSecurityAttributes) = CreateDirectoryA;
+// For apiPatch
+FARPROC* iatTargetEntry = NULL;
 
 // ------------------------------------------------------------
 
@@ -264,9 +268,7 @@ void Setup(HMODULE hModule)
 
 void DetoursStart()
 {
-	// Backup patched bytes
-	memcpy(OrigBytes, hookTarget, sizeof OrigBytes);
-	HookWrite(hookTarget, apiDetour);
+	apiPatch(GetModuleHandle(NULL), (FARPROC*)&apiTarget);
 
 	return;
 }
@@ -274,10 +276,11 @@ void DetoursStart()
 void DetoursEnd()
 {
 	DWORD lpflOldProtect = NULL;
+	FARPROC* apiTargetPtr = (FARPROC*)apiTarget;
 
-	VirtualProtect(hookTarget, sizeof OrigBytes, PAGE_EXECUTE_READWRITE, &lpflOldProtect);
-	memcpy(hookTarget, OrigBytes, sizeof OrigBytes);
-	VirtualProtect(hookTarget, sizeof OrigBytes, lpflOldProtect, &lpflOldProtect);
+	VirtualProtect(iatTargetEntry, sizeof FARPROC, PAGE_EXECUTE_READWRITE, &lpflOldProtect);
+	memcpy(iatTargetEntry, &apiTargetPtr, sizeof FARPROC);
+	VirtualProtect(iatTargetEntry, sizeof FARPROC, lpflOldProtect, &lpflOldProtect);
 
 	return;
 }
@@ -325,7 +328,7 @@ bool _ExportGetRealAddr(void* expectedAddr)
 }
 
 // API Detour
-HRESULT apiDetour(HWND hwnd, int csidl, HANDLE hToken, DWORD dwFlags, LPSTR pszPath) {
+BOOL apiDetour(LPCSTR lpPathName, LPSECURITY_ATTRIBUTES lpSecurityAttributes) {
 
 	// Config
 	TCHAR ConfigFilePath[MAX_PATH];
@@ -432,5 +435,40 @@ HRESULT apiDetour(HWND hwnd, int csidl, HANDLE hToken, DWORD dwFlags, LPSTR pszP
 	DetoursEnd();
 
 	// Call Original Function
-	return SHGetFolderPathA(hwnd, csidl, hToken, dwFlags, pszPath);
+	return CreateDirectoryA(lpPathName, lpSecurityAttributes);
+}
+
+bool apiPatch(HMODULE hModule, FARPROC* apiAddr)
+{
+	FARPROC* iatEntry = NULL;
+	FARPROC* iatEnd = NULL;
+
+	// Get size and address of target .idata section
+	iatEntry = GetIATAddr(hModule, 1);
+	iatEnd = (iatEntry + GetIATSize(hModule, 2));
+
+	// Find apiAddr
+	while (iatEntry < iatEnd)
+	{
+		if (memcmp(iatEntry++, apiAddr, sizeof FARPROC) == 0)
+		{
+			iatTargetEntry = --iatEntry;
+			break;
+		}
+	}
+
+	// Api addr found
+	if (iatTargetEntry != NULL)
+	{
+		DWORD lpflOldProtect = NULL;
+		FARPROC* apiDetourPtr = (FARPROC*)apiDetour;
+
+		VirtualProtect(iatTargetEntry, sizeof FARPROC, PAGE_EXECUTE_READWRITE, &lpflOldProtect);
+		memcpy(iatTargetEntry, &apiDetourPtr, sizeof FARPROC);
+		VirtualProtect(iatTargetEntry, sizeof FARPROC, lpflOldProtect, &lpflOldProtect);
+
+		return true;
+	}
+
+	return false;
 }
